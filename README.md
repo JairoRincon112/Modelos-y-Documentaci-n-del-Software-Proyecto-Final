@@ -9,144 +9,458 @@
 
 El Sistema de Gestión de Reservas Hoteleras para el Hotel El Bosque tiene como objetivo principal automatizar y centralizar los procesos de interacción con el huésped, gestión de habitaciones y administración de tarifas.
 
-2. Modelos de Estructura y Estáticos
 
-2.1. Diagrama de Clases (Clase Diagram)
+2. Modelos Funcionales (Behavioral Models)
+2.1. Diagrama de Casos de Uso (Use Case Diagram)
+Este diagrama establece el alcance funcional del sistema, mostrando las interacciones entre los actores y el software. Es la base para definir las funciones del sistema.
 
-Este es el corazón estructural del sistema, modelando las entidades del dominio de negocio. Cada clase, con sus atributos y relaciones, se traduce directamente en las tablas de la base de datos, sirviendo como puente entre el análisis y la implementación real.
+Fragmento de código
 
-El modelo incluye clases fundamentales como Reserva, Habitacion, Huesped y Factura, reflejando los conceptos esenciales del negocio.
+@startuml CasoDeUso_HotelElBosque
+left to right direction
 
-- Estructura del Modelo
+' Definición de Actores
+actor Huésped
+actor Recepcionista
+actor Administrador
 
-Clase
+' Definición del Límite del Sistema
+rectangle "Sistema de Gestión Hotelera" {
+    usecase (Buscar Disponibilidad) as UC1
+    usecase (Realizar Reserva) as UC2
+    usecase (Gestionar Reserva) as UC3
+    usecase (Registrar Check-in) as UC4
+    usecase (Registrar Check-out) as UC5
+    usecase (Gestionar Catálogo) as UC6
+    usecase (Generar Reportes) as UC7
+    usecase (Procesar Pago) as UC8
+    usecase (Cancelar Reserva) as UC9
+    
+    UC2 .> UC8 : <<include>>
+    UC5 .> UC8 : <<include>>
+    UC3 .> UC9 : <<include>>
+}
 
-Atributos Clave (Restricciones)
+' Relaciones de Asociación
+Huésped -- UC1
+Huésped -- UC2
+Huésped -- UC9
 
-Métodos/Operaciones
+Recepcionista -- UC1
+Recepcionista -- UC3
+Recepcionista -- UC4
+Recepcionista -- UC5
 
-Habitacion
+Administrador -- UC6
+Administrador -- UC7
+@enduml
 
-idHabitacion: int [PK], numero: varchar [Unique], tipoId: int [FK], estado: enum
+![img](/images/CASOS_DE_USO.png)
 
-cambiarEstado(), obtenerDisponibilidad()
 
-Reserva
+2.2. Diagrama de Actividades (Activity Diagram)
 
-idReserva: int [PK], huespedId: int [FK], fechaLlegada: date, estado: enum
+Este diagrama detalla el flujo de trabajo secuencial de un proceso, incluyendo las decisiones clave, como la validación del pago de la reserva.
 
-confirmarReserva(), calcularCosto()
+Fragmento de código
 
-Factura
+@startuml Actividad_RealizarReserva
+title Flujo de Actividad: Realizar Reserva (Online)
 
-idFactura: int [PK], reservaId: int [FK, Unique], total: decimal, estadoPago: enum
+start
+:Huésped ingresa fechas y tipo;
+:Consultar Disponibilidad en BD;
 
-generarFactura(), procesarPago()
+if (¿Hay habitaciones disponibles?) then (Sí)
+  :Mostrar Opciones y Precios;
+  :Huésped selecciona y suministra datos;
+  :Iniciar Proceso de Pago;
+  
+  if (¿Pago exitoso?) then (Sí)
+    :Crear Objeto Reserva;
+    :Cambiar estado de Reserva a Confirmada;
+    :Enviar Correo de Confirmación;
+    stop
+  else (No)
+    :Mostrar Mensaje de Error de Pago;
+    end
+  endif
 
-Relación entre Clases: Las asociaciones clave son la relación $1 \longrightarrow *$ (uno a muchos) entre Huesped y Reserva (un huésped realiza muchas reservas), y la relación $1 \longrightarrow 1$ (uno a uno) entre Reserva y Factura (cada reserva genera exactamente una factura).
+else (No)
+  :Mostrar mensaje de no disponibilidad;
+  end
+endif
+@enduml
 
-2.2. Diagrama de Objetos (Object Diagram)
+![img](/images/D_ACTIVIDADES.png)
 
-Similar al diagrama de clases, el diagrama de objetos presenta instancias concretas de las clases en un momento específico. Su función es validar que las relaciones entre las entidades son coherentes y que el modelo puede ser "poblado" con datos reales.
 
-- Instancia de Ejemplo
+3. Modelos Estructurales (Structural Models)
+   
+3.1. Diagrama de Clases (Class Diagram)
 
-Huesped: Juan Pérez (id: 502, email: juan.p@mail.com)
+Este diagrama es el esqueleto del sistema. Modela los conceptos principales con sus atributos, métodos y asociaciones (multiplicidad), sirviendo de base para el diseño de la base de datos.
 
-Reserva: #99 (id: 99, llegada: 2025-12-01, estado: Ocupada)
+Fragmento de código
 
-Habitacion: #101 (número: 101, estado: Ocupada)
+@startuml Clase_HotelElBosque
+hide empty members
 
-El objeto Huesped: Juan Pérez está asociado a la Reserva: #99, la cual a su vez tiene asignada la Habitacion: #101.
+' Clases Esenciales
+class TipoHabitacion {
+  + idTipo: int <<PK>>
+  + nombre: varchar (Ej: Suite) <<Unique>>
+  + tarifaBase: decimal
+  + actualizarTarifa()
+}
 
-2.3. Diagrama de Paquetes (Package Diagram)
+class Habitacion {
+  + idHabitacion: int <<PK>>
+  + numero: varchar <<Unique>>
+  + tipoId: int <<FK>>
+  + estado: enum
+  + cambiarEstado()
+}
 
-Este diagrama organiza el sistema en módulos lógicos para facilitar la escalabilidad y el mantenimiento.
+class Huesped {
+  + idHuesped: int <<PK>>
+  + email: varchar <<Unique>>
+  + registrar()
+}
 
-Paquete Presentación: Contiene la interfaz web para el huésped y la terminal de la recepcionista.
+class Reserva {
+  + idReserva: int <<PK>>
+  + huespedId: int <<FK>>
+  + habitacionId: int <<FK>>
+  + estado: enum
+  + calcularCosto()
+}
 
-Paquete Lógica de Negocio: Encapsula la lógica de los Módulo Reservas, Módulo Habitaciones, y Módulo Facturación.
+class Factura {
+  + idFactura: int <<PK>>
+  + reservaId: int <<FK, Unique>>
+  + estadoPago: enum
+  + generarFactura()
+}
 
-Paquete Seguridad: Maneja la autenticación, roles y permisos.
+' Relaciones
+TipoHabitacion "1" -- "*" Habitacion : contiene >
+Huesped "1" -- "*" Reserva : realiza >
+Habitacion "1" -- "*" Reserva : asignada en >
+Reserva "1" -- "1" Factura : genera >
+@enduml
 
-Paquete Persistencia: Representa la capa de acceso a la Base de Datos.
+![img](/images/D_CLASES.png)
 
-3. Modelos Funcionales y de Comportamiento
+3.2. Diagrama de Objetos (Object Diagram)
 
-3.1. Diagrama de Casos de Uso (Use Case Diagram)
+Representa una instancia concreta del diagrama de clases en un momento específico, validando la coherencia del modelo con ejemplos de datos reales.
 
-El diagrama de casos de uso es fundamental para definir el alcance funcional del sistema. Muestra a los actores que usan el sistema y las actividades clave que pueden realizar.
+Fragmento de código
 
-- Actores y Funcionalidad
+@startuml Objeto_HotelElBosque
+title Diagrama de Objetos (Instancia de Reserva)
 
-Huésped: Acciones relacionadas con la búsqueda y gestión de sus propias reservas (Realizar Reserva, Cancelar Reserva).
+object Habitacion_101 {
+  numero = "101"
+  estado = "Ocupada"
+}
 
-Recepcionista: Acciones de gestión operativa (Registrar Check-in, Registrar Check-out, Gestionar Reserva).
+object Huesped_JuanPerez {
+  id = 502
+  nombre = "Juan Perez"
+}
 
-Administrador: Acciones de configuración (Gestionar Catálogo, Generar Reportes).
+object Reserva_99 {
+  id = 99
+  fechaLlegada = 2025-12-01
+  estado = "CheckIn"
+}
 
-3.2. Diagrama de Actividades (Activity Diagram)
+object Factura_55 {
+  id = 55
+  total = 350.00
+  estadoPago = "Pagada"
+}
 
-Este diagrama representa el flujo de trabajo paso a paso para un proceso específico, como una receta. Se elaboró siguiendo la secuencia completa de Realizar Reserva, incluyendo bifurcaciones para decisiones reales del negocio.
+Huesped_JuanPerez "realiza" --> Reserva_99
+Habitacion_101 "asignada" --> Reserva_99
+Reserva_99 "genera" --> Factura_55
+@enduml
 
-Ejemplo de Bifurcación: El diagrama de actividades muestra si el cliente Aprueba o Rechaza la cotización (en este caso, si el Pago es Exitoso o Fallido), permitiendo identificar y modelar caminos alternativos dentro del proceso.
+![img](/images/D_OBJETOS.png)
 
-3.3. Diagrama de Estados (State Machine Diagram)
+3.3. Diagrama de Paquetes (Package Diagram)
 
-El diagrama de estados garantiza la coherencia del ciclo de vida de una entidad. Modela cómo la clase Reserva evoluciona a lo largo del tiempo, previniendo transiciones ilógicas o estados incorrectos.
+Se utiliza para organizar el sistema en módulos lógicos (Paquetes), facilitando el desarrollo modular y la escalabilidad del proyecto.
 
-Ciclo de Vida de Reserva:
+Fragmento de código
 
-$$Pendiente \rightarrow Confirmada \rightarrow CheckIn \rightarrow Ocupada \rightarrow CheckOut \rightarrow Completada$$
+@startuml Paquete_HotelElBosque
+title Diagrama de Paquetes (Modularización)
 
-4. Modelos de Interacción e Implementación
+package "Gestión Hotelera" {
+    package "Presentación (UI)" {
+        [Huésped Web]
+        [Terminal Recepción]
+    }
 
+    package "Lógica de Negocio (Backend)" {
+        [Módulo Reservas]
+        [Módulo Facturación]
+        [Módulo Seguridad]
+    }
+    
+    [Módulo Reservas] --> [Módulo Facturación] : "genera"
+    [Módulo Seguridad] --> [Módulo Reservas] : "autentica"
+}
+
+package "Persistencia" {
+    [Base de Datos]
+}
+
+[Lógica de Negocio (Backend)] --> [Base de Datos] : "accede"
+@enduml
+
+![img](/images/D_PAQUETES.png)
+
+
+4. Modelos de Interacción y Estados
+   
 4.1. Diagrama de Secuencia (Sequence Diagram)
 
-Los diagramas de secuencia muestran el orden cronológico de los mensajes intercambiados entre los componentes (actores, interfaz, backend y base de datos).
+Modela la interacción temporal de los objetos. El modelado de Registrar Check-in demuestra la comunicación entre la Interfaz, el Controlador y la Base de Datos para asegurar la trazabilidad.
 
-Modelamos el proceso de Registrar Check-in para demostrar cómo el sistema:
+Fragmento de código
 
-Busca la reserva en la Base de Datos.
+@startuml Secuencia_Checkin
+title Secuencia: Registrar Check-in
 
-El Controlador (lógica de negocio) realiza el cambio de estado.
+actor Recepcionista
+participant Interfaz
+participant ControladorReserva
+database Habitacion
+database Reserva
 
-Se actualiza el estado de la Reserva y el estado de la Habitacion simultáneamente, garantizando la trazabilidad de datos.
+Recepcionista -> Interfaz : Ingresar ID de Reserva
+Interfaz -> ControladorReserva : buscarReserva(id)
+ControladorReserva -> Reserva : SELECT reserva, huesped
+alt Reserva Válida
+    ControladorReserva --> Interfaz : Mostrar datos de Reserva y Huésped
 
-Este diagrama es clave para demostrar cómo se comunican los componentes internos del sistema.
+    Recepcionista -> Interfaz : confirmarCheckin(reservaId, habitacionNumero)
+    Interfaz -> ControladorReserva : registrarCheckin(reservaId, habitacionNumero)
+    
+    ControladorReserva -> Habitacion : UPDATE estado='Ocupada'
+    ControladorReserva -> Reserva : UPDATE estado='CheckIn'
+    
+    ControladorReserva --> Interfaz : Éxito (Habitación asignada)
+else Reserva Inválida
+    ControladorReserva --> Interfaz : Mostrar Error
+end
+@enduml
 
-4.2. Diagrama de Componentes (Component Diagram)
+![img](/images/D_SECUENCIA.png)
 
-Este diagrama explica cómo se conectan las partes internas del software (módulos) y sus responsabilidades dentro de la solución.
+![img](/images/D_SECUENCIA_CANCELACION.png)
 
-Muestra la conexión entre el WebApp Frontend (Interfaz), el API Rest/Backend (Lógica de Negocio), y cómo este último interactúa con los módulos externos (Ej. Pasarela de Pago o Módulo de Email/Notificaciones).
+4.2. Diagrama de Comunicación (Communication Diagram)
 
-Aporta valor explicando la arquitectura del backend al mostrar la división de responsabilidades en la API.
+Este diagrama se enfoca en las asociaciones necesarias entre los objetos para que el flujo se complete. Muestra la misma lógica del Diagrama de Secuencia, pero enfatiza las conexiones y el flujo de mensajes mediante la numeración, sin centrarse en la línea de vida temporal. Su propósito es validar que la estructura de la clase y sus asociaciones (llaves foráneas en la práctica) soportan la interacción requerida para la funcionalidad, como la actualización coordinada de la reserva y la habitación.
 
-4.3. Diagrama de Despliegue (Deployment Diagram)
+Fragmento de código
 
-El diagrama de despliegue muestra la arquitectura física del sistema, indicando en qué nodos (servidores, computadoras) se instalan y ejecutan los componentes del software. Esto permite validar que el sistema puede funcionar en un entorno de producción.
+@startuml Comunicacion_Checkin
+title Comunicación: Registrar Check-in
 
-Nodos Principales:
+actor Recepcionista
+participant ":Interfaz" as UI
+participant ":ControladorReserva" as CR
+database "Habitacion:DB" as HDB
+database "Reserva:DB" as RDB
 
-Cloud Server / VPS: Aloja el Servidor Web (Frontend y API) y el Servidor BD.
+' 1. Búsqueda y Validación
+Recepcionista -> UI : 1: Ingresar ID de Reserva
+UI -> CR : 2: buscarReserva(id)
+CR -> RDB : 3: SELECT Reserva
+RDB -> CR : 4: Resultado
 
-Red Local Hotel: Contiene la Terminal Recepción (PC) que accede al sistema.
+' 5. Actualización de Estados
+CR -> HDB : 5: UPDATE Habitacion.estado='Ocupada'
+CR -> RDB : 6: UPDATE Reserva.estado='CheckIn'
+CR -> UI : 7: Éxito
 
-Internet: Representa los Dispositivo Huésped.
+UI -> Recepcionista : 8: Mostrar Confirmación
+
+@enduml
+
+![img](/images/D_COMUNICACION.png)
+
+4.3. Diagrama de Estados (State Machine Diagram)
+
+Garantiza que el flujo de la clase Reserva se mantenga válido y coherente a lo largo de su ciclo de vida, evitando transiciones incorrectas.
+
+Fragmento de código
+
+@startuml Estado_Reserva
+title Ciclo de Vida de la Reserva
+
+[*] --> Pendiente
+
+state Pendiente {
+    Pendiente --> Confirmada : Pagar Reserva
+    Pendiente --> Cancelada : Expirar Tiempo
+}
+
+Confirmada --> CheckIn : Registrar Llegada
+CheckIn --> Ocupada : Check-in completado
+Ocupada --> CheckOut : Registrar Salida
+
+CheckOut --> Completada : Pago de Factura
+CheckOut --> PendienteFactura : Factura Pendiente
+
+PendienteFactura --> Completada : Procesar Pago
+
+Cancelada --> [*]
+Completada --> [*]
+@enduml
+
+
+![img](/images/D_ESTADOS.png)
 
 4.4. Diagrama de Tiempo (Timing Diagram)
 
-Este diagrama es fundamental para la optimización del proceso productivo. Muestra la duración de las actividades, desde que se crea la reserva hasta el check-out.
+Muestra la evolución de los participantes en un eje temporal (fechas), ayudando a justificar campos de fecha y aportando a la optimización del proceso. Se utiliza la notación Mermaid para una mayor compatibilidad.
 
-Su propósito es: Justificar la necesidad de campos temporales (fecha_creacion, fecha_llegada) y evaluar la eficiencia del proceso para, por ejemplo, asegurar que el tiempo entre CheckOut y Limpieza sea mínimo.
+Fragmento de código
 
-5. Conclusión General
+%%{init: {'theme': 'base'}}%%
+gantt
+    title Evolución Temporal del Estado de la Reserva
+    dateFormat  YYYY-MM-DD
+    
+    section Huésped
+    Solicitando         :Huesped_1, 2025-12-01, 7d
+    Esperando           :Huesped_2, after Huesped_1, 3d
+    Confirmado          :Huesped_3, after Huesped_2, 30d
 
-El conjunto de diagramas UML construidos para el Sistema de Gestión de Reservas del Hotel El Bosque cumple con los estándares profesionales al:
+    section Sistema (Estado de Reserva)
+    Pendiente           :Sistema_1, 2025-12-01, 10d
+    Confirmada          :Sistema_2, after Sistema_1, 290d
+    
+    section Estancia
+    CheckIn (Llegada)   :Sistema_3, 2026-10-06, 1d
+    Ocupada             :Sistema_4, after Sistema_3, 3d
+    CheckOut            :Sistema_5, after Sistema_4, 1d
+    Completada          :Sistema_6, after Sistema_5, 10d 
 
-Describir el qué: (Casos de Uso) Definen el alcance funcional.
 
-Explicar el cómo: (Actividades, Secuencia, Estados) Detallan el comportamiento y la lógica interna.
+![img](/images/D_TIEMPO.png)
 
-Mostrar la estructura: (Clases, Componentes, Despliegue) Definen la arquitectura lógica y física.
+
+5. Modelos de Implementación y Arquitectura
+   
+5.1. Diagrama de Componentes (Component Diagram)
+   
+Explica la división interna del software en módulos y cómo se interconectan para cumplir las funciones.
+
+Fragmento de código
+
+@startuml Componente_HotelElBosque
+title Diagrama de Componentes
+
+component [WebApp Frontend] as FE
+component [API Rest/Backend] as API
+component [Módulo de Facturación] as Billing
+component [Pasarela de Pago (Externo)] as Pago
+component [Servidor de Base de Datos (DB)] as DB
+
+FE -- (API) : "HTTP/JSON"
+API -- Billing : "Interno"
+API -right-> Pago : "SSL/API Call"
+API -- DB : "JDBC/ORM"
+
+[Terminal Recepción] -- FE : "Navegador"
+
+@enduml
+
+![img](/images/D_COMPONENTES.png)
+
+
+5.2. Diagrama de Despliegue (Deployment Diagram)
+
+Indica la distribución física de los artefactos en los nodos de hardware (servidores, PCs). Esto es crucial para la validación de la infraestructura en producción.
+
+Fragmento de código
+
+@startuml Despliegue_HotelElBosque
+title Diagrama de Despliegue
+
+node "Cloud Server / VPS" as Cloud {
+    node "Servidor Web" as WebServer {
+        component "Aplicación Web (FE)" as AppWeb
+        component "API REST (Backend)" as API
+    }
+    node "Servidor BD" as DBServer {
+        database "Esquema el_bosque_db" as DB
+    }
+}
+
+node "Red Local Hotel" as LAN {
+    node "Terminal Recepción" as Terminal {
+        artifact "Navegador Cliente" as Browser
+    }
+}
+
+node "Internet" as Internet {
+    node "Dispositivo Huésped" as Mobile {
+        artifact "Navegador Móvil" as MobileBrowser
+    }
+}
+
+node "Proveedor de Pagos" as PaymentGateway
+
+AppWeb -- API : HTTP/JSON
+API -- DB : JDBC/SQL
+Terminal -- AppWeb : HTTP (Intra-Red)
+Mobile -- AppWeb : HTTPS (Internet)
+API -- PaymentGateway : HTTPS/API
+@enduml
+
+
+![img](/images/D_DESPLIEGUE.png)
+
+5.3. Diagrama de Instalación (Installation Diagram)
+
+Este diagrama es una vista detallada del proceso de puesta en marcha, especificando los artefactos de software y las dependencias de runtime. Su objetivo es comunicar al equipo de DevOps los requisitos de software exactos para cada nodo, asegurando que el ambiente de producción (Ej: Servidor de Producción con OS Linux y Runtime) esté configurado correctamente para ejecutar el Código Fuente del Sistema.
+
+Fragmento de código
+
+@startuml Instalacion_HotelElBosque
+title Diagrama de Instalación y Requisitos
+
+node "Servidor de Producción" as Server {
+    artifact "Sistema Operativo Linux" as OS
+    artifact "Servidor Web Nginx/Apache" as WebS
+    artifact "Runtime PHP/NodeJS/Java" as Runtime
+    artifact "Código Fuente del Sistema" as Code
+    artifact "Sistema de Gestión DB (MySQL)" as MySQL
+}
+
+node "Terminal de Recepción" as ClientPC {
+    artifact "Sistema Operativo Windows/Mac" as OS_Client
+    artifact "Navegador Moderno (Chrome/Firefox)" as Browser_Client
+}
+
+OS -> WebS : requiere
+WebS -> Runtime : utiliza
+Runtime -> Code : ejecuta
+Runtime -> MySQL : acceso a datos
+@enduml
+
+![img](/images/D_INSTALACION.png)
+
+
+6. Conclusión
+
+Este proyecto consolidó la importancia del Lenguaje Unificado de Modelado (UML) como herramienta crítica en la Ingeniería de Software. Modelar el Hotel El Bosque mediante diagramas como el de Clases y Secuencia nos permitió establecer una estructura de negocio coherente y validar la lógica interna del sistema. El uso de los diagramas de Despliegue y Componentes aseguró que la arquitectura técnica estuviera alineada con los requisitos de escalabilidad. En esencia, la documentación UML sirvió como un puente indispensable entre los requerimientos del negocio y la implementación de la base de datos y el backend. La rigurosidad en la notación es fundamental para la profesionalización del ciclo de vida del software.
